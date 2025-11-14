@@ -15,6 +15,7 @@ const MultipleChoice = () => {
   const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [answeredQuestionId, setAnsweredQuestionId] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
@@ -22,6 +23,9 @@ const MultipleChoice = () => {
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
+    // Don't reload questions while showing an explanation
+    if (showExplanation) return;
+    
     // Get questions that haven't been answered yet in this session
     const unansweredQuestions = questions.filter(q => !answeredQuestionIds.has(q.id));
     const questionsToUse = unansweredQuestions.length > 0 ? unansweredQuestions : questions;
@@ -33,7 +37,7 @@ const MultipleChoice = () => {
       // Fallback: if no questions selected, use all questions
       setSelectedQuestions(questionsToUse.slice(0, Math.min(10, questionsToUse.length)));
     }
-  }, [questionStats]);
+  }, [questionStats, showExplanation, answeredQuestionIds]);
 
   // Get current question - must be done before useMemo
   const currentQuestion = selectedQuestions.length > 0 && currentIndex < selectedQuestions.length 
@@ -79,15 +83,19 @@ const MultipleChoice = () => {
       return;
     }
     
+    // Store both the answer and the question ID to prevent mismatches
     setSelectedAnswer(answer);
+    setAnsweredQuestionId(questionId);
     setShowExplanation(true);
 
     const isCorrect = answer === currentQuestion.correctAnswer;
+    
+    // Update stats
     updateQuestionStats(currentQuestion.id, isCorrect);
 
     if (isCorrect) {
       incrementCorrect();
-      setScore(score + 1);
+      setScore(prev => prev + 1);
     } else {
       incrementIncorrect();
     }
@@ -104,6 +112,7 @@ const MultipleChoice = () => {
     
     // Clear all answer-related state first
     setSelectedAnswer(null);
+    setAnsweredQuestionId(null);
     setShowExplanation(false);
     setShowHint(false);
     
@@ -231,13 +240,15 @@ const MultipleChoice = () => {
           {/* Answer Options */}
           <div className="space-y-3">
             {shuffledOptions.map((option, index) => {
-              const isSelected = selectedAnswer === option;
+              // Only show status if we're showing explanation for THIS question
+              const isShowingExplanationForThisQuestion = showExplanation && answeredQuestionId === currentQuestion.id;
+              const isSelected = isShowingExplanationForThisQuestion && selectedAnswer === option;
               const isCorrect = option === currentQuestion.correctAnswer;
-              const showStatus = showExplanation;
+              const showStatus = isShowingExplanationForThisQuestion;
 
               let className = 'w-full p-4 rounded-lg text-left transition-all duration-300 ';
               
-              if (!showExplanation) {
+              if (!isShowingExplanationForThisQuestion) {
                 className += 'bg-gray-100 border-2 border-gray-300 text-gray-900 hover:bg-gray-200 hover:border-blue-500 cursor-pointer';
               } else if (isCorrect) {
                 className += 'bg-gradient-to-r from-green-600 to-emerald-600 text-white border-2 border-green-700';
@@ -253,11 +264,11 @@ const MultipleChoice = () => {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (!showExplanation && currentQuestion) {
+                    if (!isShowingExplanationForThisQuestion && currentQuestion) {
                       handleAnswerSelect(option, currentQuestion.id);
                     }
                   }}
-                  disabled={showExplanation}
+                  disabled={isShowingExplanationForThisQuestion}
                   className={className}
                 >
                   <div className="flex items-center justify-between">
@@ -270,8 +281,8 @@ const MultipleChoice = () => {
             })}
           </div>
 
-          {/* Explanation */}
-          {showExplanation && (
+          {/* Explanation - only show if this is the question we answered */}
+          {showExplanation && answeredQuestionId === currentQuestion.id && (
             <div className="mt-6 animate-slide-up">
               <div
                 className={`rounded-lg p-6 ${
