@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd 'OneDrive/Desktop/HELP ME STUDY' && npm install && npm run build",
+  "outputDirectory": "OneDrive/Desktop/HELP ME STUDY/dist",
+  "installCommand": "cd 'OneDrive/Desktop/HELP ME STUDY' && npm install"
+}
+
