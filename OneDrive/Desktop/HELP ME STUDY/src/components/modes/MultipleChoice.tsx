@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../../store/useStore';
 import { questions } from '../../data/questions';
 import { Question } from '../../types/Question';
@@ -27,18 +27,58 @@ const MultipleChoice = () => {
     const questionsToUse = unansweredQuestions.length > 0 ? unansweredQuestions : questions;
     
     const selected = selectQuestions(questionsToUse, questionStats, questionsToUse.length, 'all');
-    setSelectedQuestions(selected);
-  }, []);
+    if (selected.length > 0) {
+      setSelectedQuestions(selected);
+    } else {
+      // Fallback: if no questions selected, use all questions
+      setSelectedQuestions(questionsToUse.slice(0, Math.min(10, questionsToUse.length)));
+    }
+  }, [questionStats]);
 
+  // Get current question - must be done before useMemo
+  const currentQuestion = selectedQuestions.length > 0 && currentIndex < selectedQuestions.length 
+    ? selectedQuestions[currentIndex] 
+    : null;
+  
+  // Shuffle options when question changes using useMemo for synchronous computation
+  // This hook MUST be called unconditionally (before any early returns)
+  const shuffledOptions = useMemo(() => {
+    if (!currentQuestion || !currentQuestion.multipleChoiceOptions) return [];
+    const options = [...currentQuestion.multipleChoiceOptions];
+    if (options.length === 0) return [];
+    // Fisher-Yates shuffle algorithm
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [options[i], options[j]] = [options[j], options[i]];
+    }
+    return options;
+  }, [currentQuestion ? currentQuestion.id : null]);
+
+  // Now we can do conditional returns AFTER all hooks
   if (selectedQuestions.length === 0) {
     return <div className="min-h-screen flex items-center justify-center bg-white text-gray-900">Loading...</div>;
   }
 
-  const currentQuestion = selectedQuestions[currentIndex];
+  // Safety check
+  if (!currentQuestion) {
+    return <div className="min-h-screen flex items-center justify-center bg-white text-gray-900">Loading question...</div>;
+  }
+  
+  // Safety check for shuffled options
+  if (shuffledOptions.length === 0) {
+    return <div className="min-h-screen flex items-center justify-center bg-white text-gray-900">Loading options...</div>;
+  }
+  
   const progress = ((currentIndex + 1) / selectedQuestions.length) * 100;
 
-  const handleAnswerSelect = (answer: string) => {
+  const handleAnswerSelect = (answer: string, questionId: number) => {
     if (showExplanation) return;
+    
+    // Double-check we're answering the current question
+    if (!currentQuestion || currentQuestion.id !== questionId) {
+      return;
+    }
+    
     setSelectedAnswer(answer);
     setShowExplanation(true);
 
@@ -55,18 +95,27 @@ const MultipleChoice = () => {
 
   const handleNext = () => {
     // Mark this question as answered
-    const newAnsweredIds = new Set(answeredQuestionIds);
-    newAnsweredIds.add(selectedQuestions[currentIndex].id);
-    setAnsweredQuestionIds(newAnsweredIds);
-    
-    if (currentIndex < selectedQuestions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setSelectedAnswer(null);
-      setShowExplanation(false);
-      setShowHint(false);
-    } else {
-      setIsComplete(true);
+    const currentQuestionId = selectedQuestions[currentIndex]?.id;
+    if (currentQuestionId) {
+      const newAnsweredIds = new Set(answeredQuestionIds);
+      newAnsweredIds.add(currentQuestionId);
+      setAnsweredQuestionIds(newAnsweredIds);
     }
+    
+    // Clear all answer-related state first
+    setSelectedAnswer(null);
+    setShowExplanation(false);
+    setShowHint(false);
+    
+    // Then move to next question using functional update
+    setCurrentIndex((prevIndex) => {
+      if (prevIndex < selectedQuestions.length - 1) {
+        return prevIndex + 1;
+      } else {
+        setIsComplete(true);
+        return prevIndex;
+      }
+    });
   };
 
   const handleRestart = () => {
@@ -181,7 +230,7 @@ const MultipleChoice = () => {
 
           {/* Answer Options */}
           <div className="space-y-3">
-            {currentQuestion.multipleChoiceOptions.map((option, index) => {
+            {shuffledOptions.map((option, index) => {
               const isSelected = selectedAnswer === option;
               const isCorrect = option === currentQuestion.correctAnswer;
               const showStatus = showExplanation;
@@ -200,8 +249,14 @@ const MultipleChoice = () => {
 
               return (
                 <button
-                  key={index}
-                  onClick={() => handleAnswerSelect(option)}
+                  key={`${currentQuestion.id}-${option}-${index}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!showExplanation && currentQuestion) {
+                      handleAnswerSelect(option, currentQuestion.id);
+                    }
+                  }}
                   disabled={showExplanation}
                   className={className}
                 >

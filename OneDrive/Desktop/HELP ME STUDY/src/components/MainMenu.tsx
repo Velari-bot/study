@@ -8,7 +8,6 @@ const MainMenu = () => {
   const getNeedsPracticeCount = useStore((state) => state.getNeedsPracticeCount);
   const getAccuracy = useStore((state) => state.getAccuracy);
   const bestStreak = useStore((state) => state.gameStats.bestStreak);
-  const questionStats = useStore((state) => state.questionStats);
 
   const masteredCount = getMasteredCount();
   const studiedCount = getStudiedCount();
@@ -61,6 +60,27 @@ const MainMenu = () => {
       gradient: 'from-yellow-600 to-amber-600',
       icon: '🎯',
       disabled: !hasWeakSpots,
+    },
+    {
+      id: 'jumpGame',
+      name: 'Jump Game',
+      description: 'Answer questions to jump over obstacles!',
+      gradient: 'from-green-600 to-emerald-600',
+      icon: '🦕',
+    },
+    {
+      id: 'dinosaurGame',
+      name: 'Dinosaur Game',
+      description: 'Run and jump over cacti! Answer questions to continue.',
+      gradient: 'from-orange-600 to-red-600',
+      icon: '🦖',
+    },
+    {
+      id: 'flappyBird',
+      name: 'Flappy Bird',
+      description: 'Navigate through pipes! Answer questions correctly.',
+      gradient: 'from-blue-600 to-cyan-600',
+      icon: '🐦',
     },
   ];
 

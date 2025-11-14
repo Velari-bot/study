@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../../store/useStore';
 import { questions } from '../../data/questions';
 import { Question } from '../../types/Question';
@@ -30,6 +30,26 @@ const WeakSpotDrill = () => {
     setCurrentIndex(0); // Reset to first question when questions reload
   }, []);
 
+  // Get current question - must be done before useMemo
+  const currentQuestion = selectedQuestions.length > 0 && currentIndex < selectedQuestions.length 
+    ? selectedQuestions[currentIndex] 
+    : null;
+  
+  // Shuffle options when question changes using useMemo for synchronous computation
+  // This hook MUST be called unconditionally (before any early returns)
+  const shuffledOptions = useMemo(() => {
+    if (!currentQuestion || !currentQuestion.multipleChoiceOptions) return [];
+    const options = [...currentQuestion.multipleChoiceOptions];
+    if (options.length === 0) return [];
+    // Fisher-Yates shuffle algorithm
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [options[i], options[j]] = [options[j], options[i]];
+    }
+    return options;
+  }, [currentQuestion ? currentQuestion.id : null]);
+
+  // Now we can do conditional returns AFTER all hooks
   if (selectedQuestions.length === 0) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
@@ -49,12 +69,15 @@ const WeakSpotDrill = () => {
       </div>
     );
   }
-
-  const currentQuestion = selectedQuestions[currentIndex];
   
   // Safety check
   if (!currentQuestion) {
     return <div className="min-h-screen flex items-center justify-center bg-white text-gray-900">Loading question...</div>;
+  }
+  
+  // Safety check for shuffled options
+  if (shuffledOptions.length === 0) {
+    return <div className="min-h-screen flex items-center justify-center bg-white text-gray-900">Loading options...</div>;
   }
   
   const progress = ((currentIndex + 1) / selectedQuestions.length) * 100;
@@ -243,7 +266,7 @@ const WeakSpotDrill = () => {
 
           {/* Answer Options */}
           <div className="space-y-3">
-            {currentQuestion.multipleChoiceOptions.map((option, index) => {
+            {shuffledOptions.map((option, index) => {
               const isSelected = selectedAnswer?.trim() === option.trim();
               const isCorrect = option.trim() === currentQuestion.correctAnswer.trim();
               const showStatus = showExplanation;

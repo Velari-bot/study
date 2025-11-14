@@ -29,5 +29,8 @@ export type GameMode =
   | 'speedMode'
   | 'typeAnswer'
   | 'matching'
-  | 'weakSpot';
+  | 'weakSpot'
+  | 'jumpGame'
+  | 'dinosaurGame'
+  | 'flappyBird';
 

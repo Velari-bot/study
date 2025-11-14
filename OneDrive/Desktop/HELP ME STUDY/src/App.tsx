@@ -7,6 +7,9 @@ import SpeedMode from './components/modes/SpeedMode';
 import TypeAnswer from './components/modes/TypeAnswer';
 import MatchingGame from './components/modes/MatchingGame';
 import WeakSpotDrill from './components/modes/WeakSpotDrill';
+import JumpGame from './components/modes/JumpGame';
+import DinosaurGame from './components/modes/DinosaurGame';
+import FlappyBird from './components/modes/FlappyBird';
 
 function App() {
   const currentMode = useStore((state) => state.currentMode);
@@ -32,6 +35,12 @@ function App() {
         return <MatchingGame />;
       case 'weakSpot':
         return <WeakSpotDrill />;
+      case 'jumpGame':
+        return <JumpGame />;
+      case 'dinosaurGame':
+        return <DinosaurGame />;
+      case 'flappyBird':
+        return <FlappyBird />;
       default:
         return <MainMenu />;
     }

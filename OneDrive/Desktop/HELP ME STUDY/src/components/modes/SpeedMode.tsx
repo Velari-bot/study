@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useStore } from '../../store/useStore';
 import { questions } from '../../data/questions';
 import { Question } from '../../types/Question';
@@ -25,8 +25,8 @@ const SpeedMode = () => {
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<Set<number>>(new Set());
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const feedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const unansweredQuestions = questions.filter(q => !answeredQuestionIds.has(q.id));
@@ -37,7 +37,7 @@ const SpeedMode = () => {
 
   useEffect(() => {
     if (isStarted && timeLeft > 0 && !isComplete) {
-      timerRef.current = setInterval(() => {
+      timerRef.current = window.setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setIsComplete(true);
@@ -49,21 +49,47 @@ const SpeedMode = () => {
     }
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) window.clearInterval(timerRef.current);
     };
   }, [isStarted, timeLeft, isComplete]);
 
   useEffect(() => {
     return () => {
-      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
     };
   }, []);
 
+  // Get current question - must be done before useMemo
+  const currentQuestion = selectedQuestions.length > 0 && currentIndex < selectedQuestions.length 
+    ? selectedQuestions[currentIndex] 
+    : null;
+  
+  // Shuffle options when question changes using useMemo for synchronous computation
+  // This hook MUST be called unconditionally (before any early returns)
+  const shuffledOptions = useMemo(() => {
+    if (!currentQuestion || !currentQuestion.multipleChoiceOptions) return [];
+    const options = [...currentQuestion.multipleChoiceOptions];
+    if (options.length === 0) return [];
+    // Fisher-Yates shuffle algorithm
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [options[i], options[j]] = [options[j], options[i]];
+    }
+    return options;
+  }, [currentQuestion ? currentQuestion.id : null]);
+
+  // Now we can do conditional returns AFTER all hooks
   if (selectedQuestions.length === 0) {
     return <div className="min-h-screen flex items-center justify-center bg-white text-gray-900">Loading...</div>;
   }
 
-  const currentQuestion = selectedQuestions[currentIndex];
+  if (!currentQuestion) {
+    return <div className="min-h-screen flex items-center justify-center bg-white text-gray-900">Loading question...</div>;
+  }
+
+  if (shuffledOptions.length === 0) {
+    return <div className="min-h-screen flex items-center justify-center bg-white text-gray-900">Loading options...</div>;
+  }
 
   const handleStart = () => {
     setIsStarted(true);
@@ -92,7 +118,7 @@ const SpeedMode = () => {
     setAnsweredQuestionIds(newAnsweredIds);
     
     // Auto-advance after brief feedback
-    feedbackTimerRef.current = setTimeout(() => {
+    feedbackTimerRef.current = window.setTimeout(() => {
       if (currentIndex < selectedQuestions.length - 1) {
         setCurrentIndex(currentIndex + 1);
         setSelectedAnswer(null);
@@ -229,7 +255,7 @@ const SpeedMode = () => {
 
           {/* Answer Options */}
           <div className="space-y-3">
-            {currentQuestion.multipleChoiceOptions.map((option, index) => {
+            {shuffledOptions.map((option, index) => {
               const isSelected = selectedAnswer === option;
               const isCorrect = option === currentQuestion.correctAnswer;
               const showStatus = showFeedback;
