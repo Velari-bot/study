@@ -1,7 +1,7 @@
 {
-  "buildCommand": "cd OneDrive/Desktop/HELP\\ ME\\ STUDY && npm run build",
+  "buildCommand": "cd 'OneDrive/Desktop/HELP ME STUDY' && npm run build",
   "outputDirectory": "OneDrive/Desktop/HELP ME STUDY/dist",
-  "installCommand": "cd OneDrive/Desktop/HELP\\ ME\\ STUDY && npm install",
+  "installCommand": "cd 'OneDrive/Desktop/HELP ME STUDY' && npm install",
   "rewrites": [
     {
       "source": "/(.*)",
